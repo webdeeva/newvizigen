@@ -9,7 +9,8 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Loader2, Save, Share2, Wand2 } from 'lucide-react';
+import { Input } from "@/components/ui/input";
+import { Loader2, Save, Share2, Wand2, Plus, Edit, Trash } from 'lucide-react';
 import DashboardLayout from '../components/DashboardLayout';
 
 interface User {
@@ -20,6 +21,12 @@ interface User {
   imageCount: number;
   isAdmin: boolean;
   isSuspended: boolean;
+}
+
+interface PromptOption {
+  _id: string;
+  text: string;
+  values: string[];
 }
 
 const models = [
@@ -42,11 +49,18 @@ export default function AdminPage() {
   const [dialogMessage, setDialogMessage] = useState('');
   const [generatedImageUrl, setGeneratedImageUrl] = useState('');
 
+  // New state variables for prompt generator options
+  const [promptOptions, setPromptOptions] = useState<PromptOption[]>([]);
+  const [selectedOption, setSelectedOption] = useState<string | null>(null);
+  const [newOptionName, setNewOptionName] = useState('');
+  const [newOptionValue, setNewOptionValue] = useState('');
+
   useEffect(() => {
     if (status === 'unauthenticated') {
       router.push('/login');
     } else if (status === 'authenticated') {
       fetchUsers();
+      fetchPromptOptions();
     }
   }, [status, router]);
 
@@ -161,6 +175,83 @@ export default function AdminPage() {
     } catch (err) {
       setError('Failed to create fake users');
       console.error(err);
+    }
+  };
+
+  // New functions for prompt generator options
+  const fetchPromptOptions = async () => {
+    try {
+      const response = await fetch('/api/admin/prompt-options');
+      if (!response.ok) {
+        throw new Error('Failed to fetch prompt options');
+      }
+      const data = await response.json();
+      console.log('Fetched prompt options:', data);
+      setPromptOptions(data);
+    } catch (err) {
+      console.error('Failed to load prompt options:', err);
+    }
+  };
+
+  const addPromptOption = async () => {
+    if (!newOptionName.trim()) return;
+    try {
+      const response = await fetch('/api/admin/prompt-options', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ option: newOptionName }),
+      });
+      if (!response.ok) {
+        throw new Error('Failed to add prompt option');
+      }
+      setNewOptionName('');
+      fetchPromptOptions();
+    } catch (err) {
+      console.error('Failed to add prompt option:', err);
+    }
+  };
+
+  const addOptionValue = async (optionId: string, value: string) => {
+    try {
+      const response = await fetch(`/api/admin/prompt-options/${optionId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ value }),
+      });
+      if (!response.ok) {
+        throw new Error('Failed to add option value');
+      }
+      fetchPromptOptions();
+    } catch (err) {
+      console.error('Failed to add option value:', err);
+    }
+  };
+
+  const deletePromptOption = async (optionId: string) => {
+    try {
+      const response = await fetch(`/api/admin/prompt-options/${optionId}`, {
+        method: 'DELETE',
+      });
+      if (!response.ok) {
+        throw new Error('Failed to delete prompt option');
+      }
+      fetchPromptOptions();
+    } catch (err) {
+      console.error('Failed to delete prompt option:', err);
+    }
+  };
+
+  const deleteOptionValue = async (optionId: string, value: string) => {
+    try {
+      const response = await fetch(`/api/admin/prompt-options/${optionId}/${value}`, {
+        method: 'DELETE',
+      });
+      if (!response.ok) {
+        throw new Error('Failed to delete option value');
+      }
+      fetchPromptOptions();
+    } catch (err) {
+      console.error('Failed to delete option value:', err);
     }
   };
 
@@ -310,7 +401,67 @@ export default function AdminPage() {
               <CardTitle>Prompt Generator Options</CardTitle>
             </CardHeader>
             <CardContent>
-              <p>Prompt Generator options management will be implemented here.</p>
+              <div className="mb-4">
+                <Input
+                  type="text"
+                  placeholder="New option name"
+                  value={newOptionName}
+                  onChange={(e) => setNewOptionName(e.target.value)}
+                  className="bg-gray-800 text-white mb-2"
+                />
+                <Button
+                  onClick={addPromptOption}
+                  className={gradientButtonClass}
+                >
+                  Add New Option
+                </Button>
+              </div>
+              {promptOptions.map((option) => (
+                <div key={option._id} className="mb-6 p-4 border border-gray-700 rounded">
+                  <h3 className="text-lg font-semibold mb-2">{option.text}</h3>
+                  <div className="mb-2">
+                    <Input
+                      type="text"
+                      placeholder="New value for this option"
+                      value={newOptionValue}
+                      onChange={(e) => setNewOptionValue(e.target.value)}
+                      className="bg-gray-800 text-white mb-2"
+                    />
+                    <Button
+                      onClick={() => {
+                        if (newOptionValue.trim()) {
+                          addOptionValue(option._id, newOptionValue);
+                          setNewOptionValue('');
+                        }
+                      }}
+                      className={gradientButtonClass}
+                    >
+                      Add Value
+                    </Button>
+                  </div>
+                  <ul className="ml-4">
+                    {option.values.map((value) => (
+                      <li key={value} className="flex justify-between items-center mb-1">
+                        {value}
+                        <Button
+                          onClick={() => deleteOptionValue(option._id, value)}
+                          className={redButtonClass}
+                          size="sm"
+                        >
+                          <Trash className="h-4 w-4" />
+                        </Button>
+                      </li>
+                    ))}
+                  </ul>
+                  <Button
+                    onClick={() => deletePromptOption(option._id)}
+                    className={`${redButtonClass} mt-2`}
+                    size="sm"
+                  >
+                    Delete Option
+                  </Button>
+                </div>
+              ))}
             </CardContent>
           </Card>
         </TabsContent>
