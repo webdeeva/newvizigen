@@ -213,15 +213,15 @@ export default function AdminPage() {
 
   const addOptionValue = async (optionId: string, value: string) => {
     try {
-      const response = await fetch(`/api/admin/prompt-options/${optionId}`, {
+      const response = await fetch(`/api/admin/prompt-options`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ value }),
+        body: JSON.stringify({ id: optionId, value }),
       });
       if (!response.ok) {
         throw new Error('Failed to add option value');
       }
-      fetchPromptOptions();
+      await fetchPromptOptions(); // Refresh the options after adding a value
     } catch (err) {
       console.error('Failed to add option value:', err);
     }
@@ -229,15 +229,16 @@ export default function AdminPage() {
 
   const deletePromptOption = async (optionId: string) => {
     try {
-      const response = await fetch(`/api/admin/prompt-options/${optionId}`, {
+      const response = await fetch(`/api/admin/prompt-options?id=${optionId}`, {
         method: 'DELETE',
       });
       if (!response.ok) {
         throw new Error('Failed to delete prompt option');
       }
-      fetchPromptOptions();
+      await fetchPromptOptions(); // Refresh the options after deletion
     } catch (err) {
       console.error('Failed to delete prompt option:', err);
+      throw err; // Re-throw the error to be caught by the caller
     }
   };
 
@@ -249,7 +250,7 @@ export default function AdminPage() {
       if (!response.ok) {
         throw new Error('Failed to delete option value');
       }
-      fetchPromptOptions();
+      await fetchPromptOptions(); // Refresh the options after deleting a value
     } catch (err) {
       console.error('Failed to delete option value:', err);
     }
@@ -404,7 +405,7 @@ export default function AdminPage() {
               <div className="mb-4">
                 <Input
                   type="text"
-                  placeholder="New option name"
+                  placeholder="New option title (e.g., Hairstyles)"
                   value={newOptionName}
                   onChange={(e) => setNewOptionName(e.target.value)}
                   className="bg-gray-800 text-white mb-2"
@@ -422,7 +423,7 @@ export default function AdminPage() {
                   <div className="mb-2">
                     <Input
                       type="text"
-                      placeholder="New value for this option"
+                      placeholder="New dropdown value"
                       value={newOptionValue}
                       onChange={(e) => setNewOptionValue(e.target.value)}
                       className="bg-gray-800 text-white mb-2"
@@ -436,7 +437,7 @@ export default function AdminPage() {
                       }}
                       className={gradientButtonClass}
                     >
-                      Add Value
+                      Add Dropdown Value
                     </Button>
                   </div>
                   <ul className="ml-4">

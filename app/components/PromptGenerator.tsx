@@ -1,24 +1,47 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Wand2 } from 'lucide-react';
 
+interface PromptOption {
+  _id: string;
+  text: string;
+  values: string[];
+}
+
 const PromptGenerator = ({ onPromptGenerated }: { onPromptGenerated: (prompt: string) => void }) => {
-  const [peopleType, setPeopleType] = useState('');
-  const [hairType, setHairType] = useState('');
-  const [clothingType, setClothingType] = useState('');
-  const [skinTone, setSkinTone] = useState('');
-  const [environment, setEnvironment] = useState('');
-  const [style, setStyle] = useState('');
+  const [promptOptions, setPromptOptions] = useState<PromptOption[]>([]);
+  const [selectedOptions, setSelectedOptions] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    const fetchPromptOptions = async () => {
+      try {
+        const response = await fetch('/api/prompt-options');
+        if (!response.ok) {
+          throw new Error('Failed to fetch prompt options');
+        }
+        const data = await response.json();
+        setPromptOptions(data);
+      } catch (error) {
+        console.error('Error fetching prompt options:', error);
+      }
+    };
+
+    fetchPromptOptions();
+  }, []);
 
   const generatePrompt = () => {
-    const prompt = `${peopleType} person with ${hairType} hair, wearing ${clothingType} clothing, ${skinTone} skin tone, in a ${environment} environment, ${style} style`;
+    const prompt = Object.entries(selectedOptions)
+      .map(([key, value]) => `${value} ${key}`)
+      .join(', ');
     onPromptGenerated(prompt);
   };
 
   const magicPrompt = async () => {
-    const basePrompt = `${peopleType} person with ${hairType} hair, wearing ${clothingType} clothing, ${skinTone} skin tone, in a ${environment} environment, ${style} style`;
+    const basePrompt = Object.entries(selectedOptions)
+      .map(([key, value]) => `${value} ${key}`)
+      .join(', ');
     
     try {
       const response = await fetch('/api/magic-prompt', {
@@ -47,71 +70,21 @@ const PromptGenerator = ({ onPromptGenerated }: { onPromptGenerated: (prompt: st
         <CardDescription className="text-gray-400">Customize your prompt</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <Select onValueChange={setPeopleType}>
-          <SelectTrigger className="bg-gray-800 text-white border-gray-700">
-            <SelectValue placeholder="People Type" />
-          </SelectTrigger>
-          <SelectContent className="bg-gray-800 text-white border-gray-700">
-            <SelectItem value="black">Black</SelectItem>
-            <SelectItem value="asian">Asian</SelectItem>
-            <SelectItem value="african">African</SelectItem>
-            <SelectItem value="african american">African American</SelectItem>
-            <SelectItem value="caucasian">Caucasian</SelectItem>
-            <SelectItem value="biracial">Biracial</SelectItem>
-          </SelectContent>
-        </Select>
-        <Select onValueChange={setHairType}>
-          <SelectTrigger className="bg-gray-800 text-white border-gray-700">
-            <SelectValue placeholder="Hair Type" />
-          </SelectTrigger>
-          <SelectContent className="bg-gray-800 text-white border-gray-700">
-            <SelectItem value="braids">Braids</SelectItem>
-            <SelectItem value="natural">Natural</SelectItem>
-            <SelectItem value="punk">Punk</SelectItem>
-            <SelectItem value="afro">Afro</SelectItem>
-            <SelectItem value="locs">Locs</SelectItem>
-            <SelectItem value="pixie cut">Pixie Cut</SelectItem>
-          </SelectContent>
-        </Select>
-        <Select onValueChange={setClothingType}>
-          <SelectTrigger className="bg-gray-800 text-white border-gray-700">
-            <SelectValue placeholder="Clothing Type" />
-          </SelectTrigger>
-          <SelectContent className="bg-gray-800 text-white border-gray-700">
-            <SelectItem value="casual">Casual</SelectItem>
-            <SelectItem value="elegant">Elegant</SelectItem>
-            <SelectItem value="gypsy">Gypsy</SelectItem>
-            <SelectItem value="jeans">Jeans</SelectItem>
-          </SelectContent>
-        </Select>
-        <Select onValueChange={setSkinTone}>
-          <SelectTrigger className="bg-gray-800 text-white border-gray-700">
-            <SelectValue placeholder="Skin Tone" />
-          </SelectTrigger>
-          <SelectContent className="bg-gray-800 text-white border-gray-700">
-            <SelectItem value="dark">Dark</SelectItem>
-            <SelectItem value="medium">Medium</SelectItem>
-            <SelectItem value="light">Light</SelectItem>
-          </SelectContent>
-        </Select>
-        <Select onValueChange={setEnvironment}>
-          <SelectTrigger className="bg-gray-800 text-white border-gray-700">
-            <SelectValue placeholder="Environment" />
-          </SelectTrigger>
-          <SelectContent className="bg-gray-800 text-white border-gray-700">
-            <SelectItem value="city">City</SelectItem>
-            <SelectItem value="forest">Forest</SelectItem>
-          </SelectContent>
-        </Select>
-        <Select onValueChange={setStyle}>
-          <SelectTrigger className="bg-gray-800 text-white border-gray-700">
-            <SelectValue placeholder="Style" />
-          </SelectTrigger>
-          <SelectContent className="bg-gray-800 text-white border-gray-700">
-            <SelectItem value="picasso">Picasso</SelectItem>
-            <SelectItem value="photorealistic">Photorealistic</SelectItem>
-          </SelectContent>
-        </Select>
+        {promptOptions.map((option) => (
+          <Select
+            key={option._id}
+            onValueChange={(value) => setSelectedOptions(prev => ({ ...prev, [option.text]: value }))}
+          >
+            <SelectTrigger className="bg-gray-800 text-white border-gray-700">
+              <SelectValue placeholder={option.text} />
+            </SelectTrigger>
+            <SelectContent className="bg-gray-800 text-white border-gray-700">
+              {option.values.map((value) => (
+                <SelectItem key={value} value={value}>{value}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        ))}
       </CardContent>
       <CardFooter className="flex justify-between">
         <Button onClick={generatePrompt} className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600">

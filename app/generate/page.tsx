@@ -12,6 +12,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2, Save, Share2, Wand2 } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import DashboardLayout from '../components/DashboardLayout';
 import PromptGenerator from '../components/PromptGenerator';
 
@@ -28,6 +29,8 @@ export default function GeneratePage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [showPromptGenerator, setShowPromptGenerator] = useState(false);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [dialogMessage, setDialogMessage] = useState('');
 
   const handleGenerate = async () => {
     setIsLoading(true);
@@ -93,6 +96,11 @@ export default function GeneratePage() {
         body: JSON.stringify({
           imageUrl: generatedImage,
           prompt,
+          model,
+          aspectRatio,
+          guidance,
+          numOutputs,
+          disableSafetyChecker,
           isPublic,
         }),
       });
@@ -104,7 +112,8 @@ export default function GeneratePage() {
 
       const data = await response.json();
       console.log('Image saved successfully:', data);
-      // You can add a success message or redirect to the profile page here
+      setDialogMessage(isPublic ? 'Image saved and made public successfully!' : 'Image saved successfully!');
+      setDialogOpen(true);
     } catch (error) {
       console.error('Error saving image:', error);
       setError((error as Error).message || 'Failed to save image');
@@ -245,6 +254,14 @@ export default function GeneratePage() {
           </div>
         </div>
       )}
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Success</DialogTitle>
+          </DialogHeader>
+          <p>{dialogMessage}</p>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 

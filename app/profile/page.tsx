@@ -6,7 +6,8 @@ import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { Trash2, Share2, EyeOff } from 'lucide-react';
+import { Trash2, Share2, EyeOff, Eye, Copy } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import DashboardLayout from '../components/DashboardLayout';
 
 interface UserData {
@@ -32,6 +33,9 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const router = useRouter();
+  const [visiblePrompts, setVisiblePrompts] = useState<{ [key: string]: boolean }>({});
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [dialogMessage, setDialogMessage] = useState('');
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -106,6 +110,22 @@ export default function ProfilePage() {
     }
   };
 
+  const togglePromptVisibility = (imageId: string) => {
+    setVisiblePrompts(prev => ({ ...prev, [imageId]: !prev[imageId] }));
+  };
+
+  const copyPrompt = async (prompt: string) => {
+    try {
+      await navigator.clipboard.writeText(prompt);
+      setDialogMessage('Prompt copied to clipboard!');
+      setDialogOpen(true);
+    } catch (err) {
+      console.error('Failed to copy prompt:', err);
+      setDialogMessage('Failed to copy prompt');
+      setDialogOpen(true);
+    }
+  };
+
   const content = (
     <div className="container mx-auto p-4">
       <h1 className="text-3xl font-bold mb-6 bg-gradient-to-r from-purple-400 to-pink-600 text-transparent bg-clip-text">User Profile</h1>
@@ -137,7 +157,27 @@ export default function ProfilePage() {
           <Card key={image._id} className="bg-gray-900 text-white border border-gray-800">
             <CardContent className="p-4">
               <img src={image.imageUrl} alt={image.prompt} className="w-full h-48 object-cover rounded-lg mb-4" />
-              <p className="text-sm mb-2">{image.prompt}</p>
+              <div className="flex justify-between items-center mb-2">
+                <Button
+                  onClick={() => togglePromptVisibility(image._id)}
+                  variant="ghost"
+                  size="sm"
+                >
+                  {visiblePrompts[image._id] ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </Button>
+                {visiblePrompts[image._id] && (
+                  <Button
+                    onClick={() => copyPrompt(image.prompt)}
+                    variant="ghost"
+                    size="sm"
+                  >
+                    <Copy className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
+              {visiblePrompts[image._id] && (
+                <p className="text-sm mb-2">{image.prompt}</p>
+              )}
               <div className="flex justify-between items-center">
                 <Button onClick={() => handleDeleteImage(image._id)} variant="destructive" size="sm">
                   <Trash2 className="w-4 h-4 mr-2" />
@@ -165,6 +205,14 @@ export default function ProfilePage() {
           </Card>
         ))}
       </div>
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Action Successful</DialogTitle>
+          </DialogHeader>
+          <p>{dialogMessage}</p>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 
