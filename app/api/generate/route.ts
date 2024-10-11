@@ -8,7 +8,7 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     console.log('Received request body:', body);
-    const { model, prompt, aspectRatio, guidance, numOutputs, disableSafetyChecker } = body;
+    const { model, prompt, aspectRatio, guidance, numOutputs, disableSafetyChecker, userId, isPublic } = body;
 
     if (!process.env.REPLICATE_API_TOKEN) {
       throw new Error('REPLICATE_API_TOKEN is not set');
@@ -72,7 +72,15 @@ export async function POST(request: NextRequest) {
       // Format the response to match what the frontend expects
       const formattedOutput = Array.isArray(data.output) ? data.output : [data.output];
 
-      return NextResponse.json({ output: formattedOutput, debug: { input, apiUrl, data } });
+      // Return the generated image data
+      return NextResponse.json({ 
+        output: formattedOutput,
+        userId,
+        prompt,
+        model,
+        isPublic,
+        debug: { input, apiUrl, data } 
+      });
     } catch (replicateError) {
       console.error('Error from Replicate:', replicateError);
       return NextResponse.json({ 

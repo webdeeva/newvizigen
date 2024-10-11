@@ -1,6 +1,8 @@
 "use client"
 
 import { useState } from 'react';
+import { useSession } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
@@ -14,6 +16,8 @@ import DashboardLayout from '../components/DashboardLayout';
 import PromptGenerator from '../components/PromptGenerator';
 
 export default function GeneratePage() {
+  const { data: session } = useSession();
+  const router = useRouter();
   const [prompt, setPrompt] = useState('');
   const [model, setModel] = useState('flux-pro');
   const [aspectRatio, setAspectRatio] = useState('1:1');
@@ -30,6 +34,15 @@ export default function GeneratePage() {
     setError('');
     setGeneratedImage('');
     try {
+      console.log('Sending request with parameters:', {
+        model,
+        prompt,
+        aspectRatio,
+        guidance,
+        numOutputs,
+        disableSafetyChecker,
+      });
+
       const response = await fetch('/api/generate', {
         method: 'POST',
         headers: {
@@ -51,29 +64,51 @@ export default function GeneratePage() {
       }
 
       const data = await response.json();
+      console.log('Received response:', data);
 
       if (data.output && Array.isArray(data.output) && data.output.length > 0) {
         setGeneratedImage(data.output[0]);
       } else if (typeof data.output === 'string') {
         setGeneratedImage(data.output);
       } else {
-        throw new Error('Invalid response format');
+        throw new Error('Invalid response format: ' + JSON.stringify(data));
       }
     } catch (error) {
-      console.error('Error generating image:', error);
+      console.error('Detailed error generating image:', error);
       setError((error as Error).message || 'An unexpected error occurred');
     }
     setIsLoading(false);
   };
 
-  const handleSave = () => {
-    // TODO: Implement save functionality
-    console.log('Save image');
-  };
+  const handleSave = async (isPublic: boolean = false) => {
+    if (!session) {
+      router.push('/login');
+      return;
+    }
 
-  const handleMakePublic = () => {
-    // TODO: Implement make public functionality
-    console.log('Make image public');
+    try {
+      const response = await fetch('/api/images/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          imageUrl: generatedImage,
+          prompt,
+          isPublic,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to save image');
+      }
+
+      const data = await response.json();
+      console.log('Image saved successfully:', data);
+      // You can add a success message or redirect to the profile page here
+    } catch (error) {
+      console.error('Error saving image:', error);
+      setError((error as Error).message || 'Failed to save image');
+    }
   };
 
   const handlePromptGenerated = (generatedPrompt: string) => {
@@ -85,9 +120,6 @@ export default function GeneratePage() {
     <div className="text-white">
       <h1 className="text-3xl font-bold mb-6 bg-gradient-to-r from-purple-400 to-pink-600 text-transparent bg-clip-text">AI Image Generator</h1>
       <div className="flex flex-col lg:flex-row gap-6">
-        <div className={`lg:w-1/3 order-1 lg:order-2 ${showPromptGenerator ? 'block' : 'hidden lg:block'}`}>
-          <PromptGenerator onPromptGenerated={handlePromptGenerated} />
-        </div>
         <div className="lg:w-2/3 order-2 lg:order-1">
           <Card className="bg-gray-900 border-gray-800">
             <CardHeader>
@@ -180,7 +212,7 @@ export default function GeneratePage() {
               </div>
             </CardContent>
             <CardFooter>
-              <Button onClick={handleGenerate} disabled={isLoading} className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white">
+              <Button onClick={handleGenerate} disabled={isLoading} className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600">
                 {isLoading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -193,17 +225,20 @@ export default function GeneratePage() {
             </CardFooter>
           </Card>
         </div>
+        <div className={`lg:w-1/3 order-1 lg:order-2 ${showPromptGenerator ? 'block' : 'hidden lg:block'}`}>
+          <PromptGenerator onPromptGenerated={handlePromptGenerated} />
+        </div>
       </div>
       {generatedImage && (
         <div className="mt-8">
           <h2 className="text-2xl font-bold mb-4 bg-gradient-to-r from-purple-400 to-pink-600 text-transparent bg-clip-text">Generated Image</h2>
           <img src={generatedImage} alt="Generated" className="w-full max-w-2xl mx-auto rounded-lg shadow-lg" />
           <div className="mt-4 flex justify-center space-x-4">
-            <Button onClick={handleSave} className="flex items-center bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white">
+            <Button onClick={() => handleSave(false)} className="flex items-center bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white">
               <Save className="mr-2 h-4 w-4" />
               Save
             </Button>
-            <Button onClick={handleMakePublic} className="flex items-center bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 text-white">
+            <Button onClick={() => handleSave(true)} className="flex items-center bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 text-white">
               <Share2 className="mr-2 h-4 w-4" />
               Make Public
             </Button>

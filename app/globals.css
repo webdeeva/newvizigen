@@ -80,3 +80,26 @@
     @apply bg-background text-foreground;
   }
 }
+
+.bg-gray-800 {
+  --tw-bg-opacity: 1;
+  background-color: rgb(19 19 19 / var(--tw-bg-opacity));
+}
+
+.bg-gray-900 {
+  --tw-bg-opacity: 1;
+  background-color: rgb(27 27 27 / var(--tw-bg-opacity));
+}
+
+.border-gray-700 {
+  --tw-border-opacity: 1;
+  border-color: rgb(54 54 54 / var(--tw-border-opacity));
+}
+.text-blue-500 {
+  --tw-text-opacity: 1;
+  color: #c084fc;
+}
+.hover\:text-white-800:hover {
+  --tw-text-opacity: 1;
+  color: rgb(255 255 255);
+}
