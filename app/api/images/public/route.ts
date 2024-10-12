@@ -6,6 +6,23 @@ export async function GET(req: NextRequest) {
     const client = await clientPromise;
     const db = client.db("ai_image_generator");
 
+    const { searchParams } = new URL(req.url);
+    const filter = searchParams.get('filter') || 'hot';
+
+    let sortStage;
+    switch (filter) {
+      case 'hot':
+        sortStage = { $sort: { favorites: -1, createdAt: -1 } };
+        break;
+      case 'newest':
+        sortStage = { $sort: { createdAt: -1 } };
+        break;
+      case 'all':
+      default:
+        sortStage = { $sort: { createdAt: -1 } };
+        break;
+    }
+
     const images = await db.collection("images")
       .aggregate([
         { $match: { isPublic: true } },
@@ -22,10 +39,11 @@ export async function GET(req: NextRequest) {
             imageUrl: 1,
             prompt: 1,
             createdAt: 1,
-            username: "$user.username"
+            username: "$user.username",
+            favorites: { $ifNull: ["$favorites", 0] }
           }
         },
-        { $sort: { createdAt: -1 } }
+        sortStage
       ])
       .toArray();
 

@@ -1,8 +1,8 @@
 "use client"
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
@@ -19,6 +19,7 @@ import PromptGenerator from '../components/PromptGenerator';
 export default function GeneratePage() {
   const { data: session } = useSession();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [prompt, setPrompt] = useState('');
   const [model, setModel] = useState('flux-pro');
   const [aspectRatio, setAspectRatio] = useState('1:1');
@@ -29,8 +30,15 @@ export default function GeneratePage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [showPromptGenerator, setShowPromptGenerator] = useState(false);
-  const [dialogOpen, setDialogOpen] = useState(false);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [dialogMessage, setDialogMessage] = useState('');
+
+  useEffect(() => {
+    const promptParam = searchParams.get('prompt');
+    if (promptParam) {
+      setPrompt(decodeURIComponent(promptParam));
+    }
+  }, [searchParams]);
 
   const handleGenerate = async () => {
     setIsLoading(true);
@@ -113,7 +121,7 @@ export default function GeneratePage() {
       const data = await response.json();
       console.log('Image saved successfully:', data);
       setDialogMessage(isPublic ? 'Image saved and made public successfully!' : 'Image saved successfully!');
-      setDialogOpen(true);
+      setIsDialogOpen(true);
     } catch (error) {
       console.error('Error saving image:', error);
       setError((error as Error).message || 'Failed to save image');
@@ -254,7 +262,7 @@ export default function GeneratePage() {
           </div>
         </div>
       )}
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Success</DialogTitle>
